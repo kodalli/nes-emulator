@@ -161,7 +161,7 @@ impl CPU {
                     self.lda(&opcode.mode);
                 }
 
-                // STA
+                // STA copies the value from register A to memory
                 0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
                     self.sta(&opcode.mode);
                 }
