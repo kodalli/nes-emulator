@@ -161,7 +161,7 @@ impl CPU {
                     self.lda(&opcode.mode);
                 }
 
-                /* STA */
+                // STA
                 0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
                     self.sta(&opcode.mode);
                 }
@@ -177,6 +177,10 @@ impl CPU {
                 0x00 => return,
 
                 _ => todo!(),
+            }
+
+            if program_counter_state == self.program_counter {
+                self.program_counter += (opcode.len - 1) as u16;
             }
         }
     }
