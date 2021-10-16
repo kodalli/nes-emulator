@@ -40,3 +40,18 @@
 - need to implement 256 different machine instructions
 - several instructions are similar so can reuse them
 
+#### Von Neumann Architecture
+- data and instructions stored in memory
+- executed coed is data from CPU, any data can be interpreted as executable code
+- CPU can't tell difference
+- CPU only has program counter register keeping track of position in the instructions stream.
+
+#### Memory Addressing Modes
+- CPU only has 2 KiB memory and rest of 64 KiB is for memory mapping.
+- load code into 0x8000 address
+  - [0x8000 .. 0xFFFF] reserved for Program ROM
+  - doesn't have to start exactly on 0x8000
+- NES CPU can address 65536 memory cells
+  - 2 bytes to store an address
+  - uses Little-Endian addressing
+    - 8 least significant bits of an address stored before the 8 most significant bits
