@@ -1,18 +1,46 @@
-// ---- CPU Emulation ---- //
+/* CPU Emulation */
 
 use std::collections::HashMap;
 use crate::opcodes;
+
+bitflags! {
+    /// Processor status, aka flag register, aka P
+    ///  7 6 5 4 3 2 1 0
+    ///  N V _ B D I Z C
+    ///  | |   | | | | +--- Carry Flag
+    ///  | |   | | | +----- Zero Flag
+    ///  | |   | | +------- Interrupt Disable
+    ///  | |   | +--------- Decimal Mode (not used on NES)
+    ///  | |   +----------- Break Command
+    ///  | +--------------- Overflow Flag
+    ///  +----------------- Negative Flag
+    ///
+    pub struct CpuFlags: u8 {
+        const CARRY             = 0b00000001;
+        const ZERO              = 0b00000010;
+        const INTERRUPT_DISABLE = 0b00000100;
+        const DECIMAL_MODE      = 0b00001000;
+        const BREAK             = 0b00010000;
+        const BREAK2            = 0b00100000;
+        const OVERFLOW          = 0b01000000;
+        const NEGATIV           = 0b10000000;
+    }
+}
+
+const STACK: u16 = 0x0100;
+const STACK_RESET: u8 = 0xfd;
 
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
-    pub status: u8,
+    pub status: CpuFlags,
     pub program_counter: u16,
+    pub stack_pointer: u8,
     memory: [u8; 0xFFFF],
 }
 
-// ---- Memory Addressing Modes ---- //
+/* Memory Addressing Modes */
 
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
@@ -64,8 +92,9 @@ impl CPU {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: 0,
+            stack_pointer: STACK_RESET,
             program_counter: 0,
+            status: CpuFlags::from_bits_truncate(0b100100),
             memory: [0; 0xFFFF],
         }
     }
@@ -75,7 +104,10 @@ impl CPU {
         self.register_a = 0;
         self.register_x = 0;
         self.register_y = 0;
-        self.status = 0;
+        self.stack_pointer = STACK_RESET;
+        self.status: CpuFlags::from_bits_truncate(
+        0b100100);
+        self.memory = [0; 0xFFFF];
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
 
@@ -156,25 +188,91 @@ impl CPU {
             let opcode = opcodes.get(&code).expect(&format!("OpCode {:x} is not recognized", code));
 
             match code {
+
+                // ADC (Add with Carry)
+
+                // AND (bitwise AND with accumulator)
+
+                // ASL (Arithmetic Shift Left)
+
+                // BIT (test BITs)
+
+                // Branch Instructions:
+                // BPL (Branch on Plus)
+                // BMI (Branch on Minus)
+                // BVC (Branch on Overflow Clear)
+                // BVS (Branch on Overflow Set
+                // BCC (Branch on Carry Clear)
+                // BCS (Branch on Carry Set)
+                // BNE (Branch on Not Equals)
+                // BEQ (Branch on Equal)
+
+                // BRK (0x00)
+                0x00 => return,
+
+                // CMP (Compare Accumulator)
+
+                // CPX (Compare X register)
+
+                // CPY (Compare Y register)
+
+                // DEC (Decrement memory)
+
+                // EOR (Bitwise Exclusive OR)
+
+                // FLag (Processor Status) Instructions
+
+                // INC (Increment memory)
+
+                // INX (0xE8) Increment X
+                0xE8 => self.inx(),
+
+                // JMP (Jump)
+
+                // JSR (Jump to Subroutine)
+
                 // LDA Load Accumulator
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
                     self.lda(&opcode.mode);
                 }
 
-                // STA copies the value from register A to memory
+                // LDX (Load X register)
+
+                // LDY (Load Y register)
+
+                // LSR (Logical Shift Right)
+
+                // Wrap Around, Program Counter, Execution Times
+
+                // NOP (No Operation)
+
+                // ORA (Bitwise OR with Accumulator)
+
+                // Register Instructions
+
+                // ROL (Rotate Left)
+
+                // ROR (Rotate Right)
+
+                // RTI (Return from Interrupt)
+
+                // RTS (Return from subroutine)
+
+                // SBC (Subtract with Carry)
+
+                // STA (Store Accumulator) copies the value from register A to memory
                 0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
                     self.sta(&opcode.mode);
                 }
 
-                // TAX (0xAA) Transfer Accumulator to X
-                // Copy value from A to X, and update status register
+                // Stack Instructions
+
+                // STX (Store X register)
+
+                // STY (Store Y register)
+
+                // TAX (0xAA) Transfer Accumulator to X, Copy value from A to X, and update status register
                 0xAA => self.tax(),
-
-                // INX (0xE8) Increment X
-                0xE8 => self.inx(),
-
-                // BRK (0x00)
-                0x00 => return,
 
                 _ => todo!(),
             }
@@ -184,8 +282,139 @@ impl CPU {
             }
         }
     }
+    /* Helper functions */
 
-    // ---- Op Codes ---- //
+    fn update_zero_and_negative_flags(&mut self, result: u8) {
+        if result == 0 {
+            self.status.insert(CpuFlags::ZERO);
+        } else {
+            self.status.remove(CpuFlags::ZERO);
+        }
+
+        if result & 0b1000_0000 != 0 {
+            self.status.insert(CpuFlags::NEGATIV);
+        } else {
+            self.status.remove(CpuFlags::NEGATIV);
+        }
+    }
+
+    fn set_register_a(&mut self, value: u8) {
+        self.register_a = value;
+        self.update_zero_and_negative_flags(self.register_a);
+    }
+
+    // Ignoring decimal mode
+    fn add_to_register_a(&mut self, data: u8) {
+        let sum = self.register_a as u16
+            + data as u16
+            + (if self.status.contains(CpuFlags::CARRY) {
+            1
+        } else {
+            0
+        }) as u16;
+
+        let carry = sum > 0xff;
+
+        if carry {
+            self.status.insert(CpuFlags::CARRY);
+        } else {
+            self.status.remove(CpuFlags::CARRY);
+        }
+
+        let result = sum as u8;
+
+        if (data ^ result) & (result ^ self.register_a) & 0x80 != 0 {
+            self.status.insert(CpuFlags::OVERFLOW);
+        } else {
+            self.status.remove(CpuFlags::OVERFLOW);
+        }
+
+        self.set_register_a(result);
+    }
+
+    fn set_carry_flag(&mut self) {
+        self.status.insert(CpuFlags::CARRY)
+    }
+
+    fn clear_carry_flag(&mut self) {
+        self.status.remove(CpuFlags::CARRY)
+    }
+
+    /* Op Codes */
+
+    fn adc(&mut self, mode: &AddressingMode) {
+        let address = self.get_operand_address(mode);
+        let value = self.mem_read(address);
+        self.add_to_register_a(value);
+    }
+
+    fn and(&mut self, mode: &AddressingMode) {
+        let address = self.get_operand_address(mode);
+        let data = self.mem_read(address);
+        self.set_register_a(data & self.register_a);
+    }
+
+    fn asl(&mut self, mode: &AddressingMode) -> u8 {
+        let address = self.get_operand_address(mode);
+        let mut data = self.mem_read(address);
+        if data >> 7 == 1 {
+            self.set_carry_flag();
+        } else {
+            self.clear_carry_flag();
+        }
+        data = data << 1;
+        self.mem_write(address, data);
+        self.update_zero_and_negative_flags(data);
+        data
+    }
+
+    fn asl_accumulator(&mut self) {
+        let mut data = self.register_a;
+        if data >> 7 == 1 {
+            self.set_carry_flag();
+        } else {
+            self.clear_carry_flag();
+        }
+        data = data << 1;
+        self.set_register_a(data)
+    }
+
+    fn bit(&mut self, mode: &AddressingMode) {
+        let address = self.get_operand_address(mode);
+        let data = self.mem_read(address);
+        let and = self.register_a & data;
+        if and == 0 {
+            self.status.insert(CpuFlags::ZERO);
+        } else {
+            self.status.remove(CpuFlags::ZERO);
+        }
+
+        self.status.set(CpuFlags::NEGATIV, data & 0b10000000 > 0);
+        self.status.set(CpuFlags::OVERFLOW, data & 0b01000000 > 0);
+    }
+
+    fn branch(&mut self, condition: bool) {
+        if condition {
+            let jump: i8 = self.mem_read(self.program_counter) as i8;
+            let jump_address = self
+                .program_counter
+                .wrapping_add(1)
+                .wrapping_add(jump as u16);
+
+            self.program_counter = jump_address;
+        }
+    }
+
+    fn compare(&mut self, mode: &AddressingMode, compare_with: u8) {
+        let address = self.get_operand_address(mode);
+        let data = self.mem_read(address);
+        if data <= compare_with {
+            self.status.insert(CpuFlags::CARRY);
+        } else {
+            self.status.remove(CpuFlags::CARRY);
+        }
+        self.update_zero_and_negative_flags(compare_with.wrapping_sub(data));
+    }
 
     fn lda(&mut self, mode: &AddressingMode) {
         let address = self.get_operand_address(&mode);
@@ -205,27 +434,27 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_x);
     }
 
+    fn inc(&mut self, mode: &AddressingMode) -> u8 {
+        let addr = self.get_operand_address(mode);
+        let mut data = self.mem_read(addr);
+        data = data.wrapping_add(1);
+        self.mem_write(addr, data);
+        self.update_zero_and_negative_flags(data);
+        data
+    }
+
     fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.register_x);
     }
 
-    fn update_zero_and_negative_flags(&mut self, result: u8) {
-        if result == 0 {
-            self.status = self.status | 0b0000_0010;
-        } else {
-            self.status = self.status & 0b1111_1101;
-        }
-
-        if result & 0b1000_0000 != 0 {
-            self.status = self.status | 0b1000_0000;
-        } else {
-            self.status = self.status & 0b0111_1111;
-        }
+    fn iny(&mut self) {
+        self.register_y = self.register_y.wrapping_add(1);
+        self.update_zero_and_negative_flags(self.register_y);
     }
 }
 
-// ---- Tests ---- //
+/* Tests */
 
 #[cfg(test)]
 mod test {
@@ -236,15 +465,15 @@ mod test {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
         assert_eq!(cpu.register_a, 5);
-        assert_eq!(cpu.status & 0b0000_0010, 0);
-        assert_eq!(cpu.status & 0b1000_0000, 0);
+        assert_eq!(cpu.status.bits & 0b0000_0010, 0);
+        assert_eq!(cpu.status.bits & 0b1000_0000, 0);
     }
 
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 0x00, 0x00]);
-        assert_eq!(cpu.status & 0b0000_0010, 0b10);
+        assert_eq!(cpu.status.bits & 0b0000_0010, 0b10);
     }
 
     #[test]
