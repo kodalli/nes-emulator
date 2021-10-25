@@ -13,8 +13,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cpu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cpu.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -149,6 +147,13 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <list>
+      <item itemvalue="Cargo.Run" />
+      <item itemvalue="Cargo.Test cpu::test" />
+      <item itemvalue="Cargo.Test cpu::test::test_0xa9_lda_immediate_load_data" />
+      <item itemvalue="Cargo.Test cpu::test::test_0xaa_tax_move_a_to_x" />
+      <item itemvalue="Cargo.Test cpu::test::test_lda_from_memory" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Cargo.Test cpu::test" />
@@ -171,6 +176,8 @@
       <option name="presentableId" value="Default" />
       <updated>1634257805902</updated>
       <workItem from="1634257808355" duration="16517000" />
+      <workItem from="1634601564944" duration="3385000" />
+      <workItem from="1635127976694" duration="348000" />
     </task>
     <task id="LOCAL-00001" summary="Simple NES CPU implementation with 4 ops codes, registers a and x, status, and program counter.&#10;Also updates zero and negative flags.">
       <created>1634269641285</created>
